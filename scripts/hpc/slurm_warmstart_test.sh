@@ -4,7 +4,7 @@
 #SBATCH -p icelake
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=76
+#SBATCH --cpus-per-task=8
 #SBATCH --time=00:20:00
 #SBATCH --output=outputs/hpc_test/warmstart_%j.log
 #
@@ -51,7 +51,7 @@ fit_vr_2param(
     optimizer_iterations=0,
     unary_operators=['atan', 'log1p'],
     maxsize=20,
-    procs=76,
+    procs=8,
     run_id='warmstart_test',
     warm_start=True,
 )
