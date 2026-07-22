@@ -26,7 +26,10 @@
 # chain unattended.
 
 set -euo pipefail
-cd "$(dirname "$0")/../.."
+# SLURM copies submitted scripts into a spool dir before exec, so $0-based
+# path tricks land in the wrong place; SLURM_SUBMIT_DIR is set to wherever
+# sbatch was actually invoked from and is the reliable way back to the repo.
+cd "$SLURM_SUBMIT_DIR"
 module purge
 module load miniconda/3
 source "$(conda info --base)/etc/profile.d/conda.sh"
