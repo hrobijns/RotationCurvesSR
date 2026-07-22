@@ -133,7 +133,17 @@ def fit_vr_2param(df: pd.DataFrame,
     # the checkpoint path to be findable across separate sbatch submissions.
     checkpoint = Path(output_directory) / str(run_id) / "checkpoint.pkl" if run_id else None
     if warm_start and checkpoint is not None and checkpoint.exists():
-        model = PySRRegressor.from_file(run_directory=str(checkpoint.parent), warm_start=True)
+        # Not PySRRegressor.from_file(): that eagerly calls model.refresh(),
+        # which reconstructs the hall of fame from Julia state that isn't
+        # valid for a run interrupted mid-search (crashes with "cannot unpack
+        # non-iterable NoneType" in get_hof()). The actual resume mechanism
+        # lives in .fit() itself (keyed on warm_start + julia_state_stream_,
+        # sr.py ~line 2458) and doesn't need refresh() first, so just unpickle
+        # and let fit() below do the resume.
+        import pickle
+        with open(checkpoint, "rb") as f:
+            model = pickle.load(f)
+        model.set_params(warm_start=True)
     else:
         model = PySRRegressor(
             expression_spec=template,
