@@ -16,7 +16,10 @@ module purge
 module load miniconda/3
 source "$(conda info --base)/etc/profile.d/conda.sh"
 
-conda create -y -n sparc-sr python=3.12
+# --override-channels + conda-forge: the HPC miniconda module's default
+# ('defaults') channel frequently can't solve a consistent python=3.12 build
+# set on these nodes (UnsatisfiableError on libzlib/openssl/expat versions).
+conda create -y -n sparc-sr -c conda-forge --override-channels python=3.12
 conda activate sparc-sr
 
 pip install -e .
