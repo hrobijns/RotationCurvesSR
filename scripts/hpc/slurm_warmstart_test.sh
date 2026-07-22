@@ -16,12 +16,15 @@
 # Submit as a 2-link chain and diff the logs:
 #   bash scripts/hpc/submit_chain.sh scripts/hpc/slurm_warmstart_test.sh 2
 #
-# PASS: link 2's log prints "Attempting to load model from
-# outputs/hpc_test/warmstart_test/checkpoint.pkl" and the printed iteration
-# count / hall-of-fame picks up roughly where link 1 left off.
-# FAIL: link 2 starts from iteration 0 / empty hall of fame again — the
-# TemplateExpressionSpec warning is biting; fall back to independent
-# 11:45 replicate runs instead of chaining.
+# PASS: link 2's log prints "[resume] loading checkpoint from
+# outputs/hpc_test/warmstart_test/checkpoint.pkl" and its hall-of-fame
+# continues improving on/past link 1's, not regressing at matching
+# complexities. checkpoint_every=5: PySR only checkpoints before/after a
+# fit() call, so this loops fit() in small chunks — a real, resumable
+# checkpoint gets written every 5 iterations instead of only at the (never
+# reached, given niterations=99999) end.
+# FAIL: no "[resume]" line, or hall-of-fame clearly restarts from scratch —
+# fall back to independent 11:45 replicate runs instead of chaining.
 
 set -euo pipefail
 # SLURM copies submitted scripts into a spool dir before exec, so $0-based
@@ -57,5 +60,6 @@ fit_vr_2param(
     procs=8,
     run_id='warmstart_test',
     warm_start=True,
+    checkpoint_every=5,
 )
 "

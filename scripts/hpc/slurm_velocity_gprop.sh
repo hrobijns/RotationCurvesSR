@@ -54,5 +54,6 @@ fit_vr_gprop(
     procs=76,
     run_id='gprop_v3_prod',
     warm_start=True,
+    checkpoint_every=10,
 )
 "

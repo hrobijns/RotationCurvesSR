@@ -48,7 +48,8 @@ def fit_vr_gprop(df: pd.DataFrame,
                  guesses: list | None = None,
                  procs: int = 0,
                  run_id: str | None = None,
-                 warm_start: bool = False):
+                 warm_start: bool = False,
+                 checkpoint_every: int | None = None):
     """
     Joint SR: learn f(r/d, γ) AND γ = g(galaxy properties) simultaneously.
 
@@ -271,7 +272,20 @@ def fit_vr_gprop(df: pd.DataFrame,
         weights = 1.0 / (2 * df["Vobs_km/s"] * errV_safe) ** 2
     else:
         weights = np.ones(len(df))
-    model.fit(X, y, weights=weights)
+
+    if checkpoint_every is not None:
+        # PySR only checkpoints before _run() starts and after it returns
+        # normally (sr.py fit()) — a niterations=99999 run killed by SLURM's
+        # wall-clock never reaches the "after" checkpoint, so nothing from
+        # this job's search survives to disk. Looping fit() in small chunks
+        # means every chunk completes normally, so a real, resumable
+        # checkpoint is written every `checkpoint_every` iterations instead
+        # of only (never) at the end.
+        model.set_params(niterations=checkpoint_every, warm_start=True)
+        while True:
+            model.fit(X, y, weights=weights)
+    else:
+        model.fit(X, y, weights=weights)
 
 
 if __name__ == "__main__":
