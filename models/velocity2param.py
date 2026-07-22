@@ -141,6 +141,7 @@ def fit_vr_2param(df: pd.DataFrame,
         # sr.py ~line 2458) and doesn't need refresh() first, so just unpickle
         # and let fit() below do the resume.
         import pickle
+        print(f"[resume] loading checkpoint from {checkpoint} (skipping PySR's own refresh())")
         with open(checkpoint, "rb") as f:
             model = pickle.load(f)
         model.set_params(warm_start=True)
