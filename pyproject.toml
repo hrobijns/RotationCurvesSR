@@ -2,6 +2,12 @@
 requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
+[tool.setuptools]
+# No local packages installed — models/, datawrangling.py etc. are imported
+# via sys.path insertion in each script, not as an installed distribution.
+# This install exists only to pull in the pinned dependencies below.
+packages = []
+
 [project]
 name = "sparc-sr"
 version = "0.1.0"
