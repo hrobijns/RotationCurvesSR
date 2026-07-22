@@ -19,10 +19,12 @@
 # PASS: link 2's log prints "[resume] loading checkpoint from
 # outputs/hpc_test/warmstart_test/checkpoint.pkl" and its hall-of-fame
 # continues improving on/past link 1's, not regressing at matching
-# complexities. checkpoint_every=5: PySR only checkpoints before/after a
-# fit() call, so this loops fit() in small chunks — a real, resumable
-# checkpoint gets written every 5 iterations instead of only at the (never
-# reached, given niterations=99999) end.
+# complexities. checkpoint_every=1: PySR only checkpoints before/after a
+# fit() call, so this loops fit() one iteration at a time — a real, resumable
+# checkpoint gets written after every iteration instead of only at the
+# (never reached, given niterations=99999) end. Later iterations cost much
+# more per-iteration (deeper equations -> more expensive inner Optim.jl
+# calls), so even checkpoint_every=5 left a large uncheckpointed window.
 # FAIL: no "[resume]" line, or hall-of-fame clearly restarts from scratch —
 # fall back to independent 11:45 replicate runs instead of chaining.
 
@@ -60,6 +62,6 @@ fit_vr_2param(
     procs=8,
     run_id='warmstart_test',
     warm_start=True,
-    checkpoint_every=5,
+    checkpoint_every=1,
 )
 "

@@ -59,6 +59,6 @@ fit_vr_2param(
     procs=76,
     run_id='v2param_prod',
     warm_start=True,
-    checkpoint_every=10,
+    checkpoint_every=1,
 )
 "
