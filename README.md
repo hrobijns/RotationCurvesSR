@@ -49,3 +49,39 @@ Check progress any time with `squeue --me` and by tailing
 `outputs/production/hpc_v2param_<jobid>.log` /
 `outputs/production/hpc_gprop_<jobid>.log`, or by reading the
 `hall_of_fame.csv` PySR maintains under each run's output directory.
+
+### Adapting to a different SLURM cluster
+
+Everything here (the model code, the requirement for `Optim.jl`, the
+general env setup) is cluster-agnostic. Only a handful of values are
+CSD3/SL3-specific and need swapping for your own cluster:
+
+- **`scripts/hpc/slurm_velocity2param.sh` / `slurm_velocity_gprop.sh`**:
+  `-A ACCOUNT_CODE` (your project/account code — `mybalance`-equivalent, or
+  omit `-A` if your cluster doesn't require one), `-p icelake` (your
+  cluster's CPU partition name — check `sinfo`), `--cpus-per-task=76`
+  (match a full node's core count on your cluster, or whatever chunk you
+  want), and `--time=11:45:00` (your queue's max wall-clock, minus a bit of
+  margin). **Whatever you set `--cpus-per-task` to must also be set as
+  `procs=` in the Python call inside the same file** — the two aren't
+  linked automatically.
+- **`scripts/hpc/setup_env.sh`**: `module load miniconda/3` — module names
+  are cluster-specific; run `module avail conda` (or similar) to find the
+  equivalent, or skip module-loading entirely if conda/mamba is already on
+  `PATH`. The `conda-forge --override-channels`, `LD_LIBRARY_PATH`, and
+  Julia/`libstdc++` workarounds in that script were fixes for CSD3-specific
+  quirks (a broken default conda channel, a git/OpenSSL library clash, an
+  outdated system `libstdc++`) — they're harmless to leave in even if your
+  cluster doesn't have the same issues, but if `pip install -e .` or the
+  Julia precompile step fails in a new way, that's the likely place to
+  look, and the comments there explain each workaround's root cause.
+- **Filesystem**: CSD3 has a small backed-up home dir and a large
+  non-backed-up `~/rds/hpc-work` for active job I/O — clone the repo
+  wherever your cluster's equivalent scratch/project storage is, not a
+  small home quota.
+
+Not chained/resumable on any cluster — each `sbatch` is a single run up to
+its time limit; there's no automatic continuation between submissions
+(PySR's own checkpoint resume for this project's `TemplateExpressionSpec`
+models turned out not to work reliably, so it was deliberately removed
+rather than shipped half-working).
