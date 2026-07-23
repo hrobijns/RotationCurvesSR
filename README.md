@@ -23,17 +23,29 @@ python scripts/run_v2p_toy.py
 python scripts/run_gprop_toy.py
 ```
 
-## Cluster (CSD3, SL3)
+## Cluster (any SLURM cluster with a similarly-sized CPU partition; written for CSD3/SL3)
 
 ```
 ssh <user>@login-cpu.hpc.cam.ac.uk
 git clone --depth 1 https://github.com/hrobijns/rotationcurvesSR.git ~/rds/hpc-work/rotationcurvesSR
 cd ~/rds/hpc-work/rotationcurvesSR
-bash scripts/hpc/setup_env.sh          # edit -A ACCOUNT_CODE in slurm_*.sh first
-bash scripts/hpc/submit_chain.sh scripts/hpc/slurm_velocity2param.sh 4
-bash scripts/hpc/submit_chain.sh scripts/hpc/slurm_velocity_gprop.sh 4
+bash scripts/hpc/setup_env.sh          # one-time: conda env + Julia depot precompile
+
+# edit -A ACCOUNT_CODE -> your own project account in both scripts first
+# (see `mybalance` for CSD3 project codes), and -p icelake -> your cluster's
+# equivalent CPU partition name if not on CSD3
+sbatch scripts/hpc/slurm_velocity2param.sh
+sbatch scripts/hpc/slurm_velocity_gprop.sh
 ```
 
-SL3 caps jobs at 12h / 448 cores cluster-wide — `submit_chain.sh` links
-multiple jobs via SLURM dependencies, resuming from PySR's checkpoint
-(`warm_start=True`, fixed `run_id`) across the chain.
+Each is a single, non-chained job requesting one full 76-core node for up
+to ~12h (SL3's wall-clock cap; `--time=11:45:00` to leave startup margin).
+They don't resume across separate submissions — if you want more search
+time, just increase `--time` and/or `--cpus-per-task` / `procs=` in the
+Python call to match your cluster's node size, rather than re-submitting.
+Safe to run both at once (152 cores total, separate nodes, no shared state).
+
+Check progress any time with `squeue --me` and by tailing
+`outputs/production/hpc_v2param_<jobid>.log` /
+`outputs/production/hpc_gprop_<jobid>.log`, or by reading the
+`hall_of_fame.csv` PySR maintains under each run's output directory.

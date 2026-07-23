@@ -8,22 +8,22 @@
 #SBATCH --time=11:45:00
 #SBATCH --output=outputs/production/hpc_gprop_%j.log
 #
-# Mega run: velocity_gprop (v3) on a full icelake node (76 cores). SL3 caps
-# jobs at 12h / 448 cores cluster-wide — running this alongside
-# slurm_velocity2param.sh is 152 cores total, well within budget, but the
-# WALLCLOCK CAP means one sbatch won't finish a long search. Chain 12h blocks
-# via warm_start + PySR checkpoint.pkl (run_id fixed below) using:
-#   bash scripts/hpc/submit_chain.sh scripts/hpc/slurm_velocity_gprop.sh 4
-# (single submit: sbatch scripts/hpc/slurm_velocity_gprop.sh)
-# Fill in ACCOUNT_CODE above first (see `mybalance` for your project codes).
-# Run scripts/hpc/setup_env.sh once before this.
-# Safe to submit alongside slurm_velocity2param.sh — separate physical nodes,
-# no shared Julia runtime state, so the "one PySR process at a time" rule
-# (same-machine GC corruption) doesn't apply across nodes.
-# NOTE: PySR warns that resuming a TemplateExpressionSpec run from checkpoint
-# is "not fully supported" — this project relies on it, so sanity-check a
-# resume on the toy runner (scripts/run_gprop_toy.py) before trusting a long
-# chain unattended.
+# Single-shot run: velocity_gprop (v3) on a full icelake node (76 cores),
+# for up to SL3's ~12h wall-clock cap (11:45 to leave margin for
+# job-start/module overhead). Not chained/resumable — when the time limit
+# hits, this run is done; results are whatever's in hall_of_fame.csv at
+# that point.
+#
+# Safe to submit alongside slurm_velocity2param.sh — separate physical
+# nodes, no shared Julia runtime state, so the "one PySR process at a time"
+# rule (same-machine GC corruption) doesn't apply across nodes. Together
+# that's 152 cores, well within SL3's 448-core cluster-wide cap.
+#
+# First time only: fill in ACCOUNT_CODE above (see `mybalance` for your
+# project codes) and run scripts/hpc/setup_env.sh once (conda env + a
+# precompiled Julia depot).
+#
+# Submit with: sbatch scripts/hpc/slurm_velocity_gprop.sh
 
 set -euo pipefail
 # SLURM copies submitted scripts into a spool dir before exec, so $0-based
@@ -53,7 +53,5 @@ fit_vr_gprop(
     unary_operators=['atan', 'log1p'],
     procs=76,
     run_id='gprop_v3_prod',
-    warm_start=True,
-    checkpoint_every=1,
 )
 "

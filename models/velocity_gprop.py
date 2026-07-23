@@ -47,9 +47,7 @@ def fit_vr_gprop(df: pd.DataFrame,
                  timeout_in_seconds: float | None = None,
                  guesses: list | None = None,
                  procs: int = 0,
-                 run_id: str | None = None,
-                 warm_start: bool = False,
-                 checkpoint_every: int | None = None):
+                 run_id: str | None = None):
     """
     Joint SR: learn f(r/d, γ) AND γ = g(galaxy properties) simultaneously.
 
@@ -224,68 +222,36 @@ def fit_vr_gprop(df: pd.DataFrame,
             nested["log"]["exp"] = 0   # log(exp(x)) = x, trivial
         if "log1p" in active_unary:
             nested["log1p"]["exp"] = 0 # log1p(exp(x)) ≈ x for large x
-    # Resume from a prior checkpoint (SL3-chained run) if one exists; otherwise
-    # build fresh. run_id must be fixed (not the PySR-default timestamp) for
-    # the checkpoint path to be findable across separate sbatch submissions.
-    checkpoint = Path(output_directory) / str(run_id) / "checkpoint.pkl" if run_id else None
-    if warm_start and checkpoint is not None and checkpoint.exists():
-        # Not PySRRegressor.from_file(): that eagerly calls model.refresh(),
-        # which reconstructs the hall of fame from Julia state that isn't
-        # valid for a run interrupted mid-search (crashes with "cannot unpack
-        # non-iterable NoneType" in get_hof()). The actual resume mechanism
-        # lives in .fit() itself (keyed on warm_start + julia_state_stream_,
-        # sr.py ~line 2458) and doesn't need refresh() first, so just unpickle
-        # and let fit() below do the resume.
-        import pickle
-        print(f"[resume] loading checkpoint from {checkpoint} (skipping PySR's own refresh())")
-        with open(checkpoint, "rb") as f:
-            model = pickle.load(f)
-        model.set_params(warm_start=True)
-    else:
-        model = PySRRegressor(
-            expression_spec=template,
-            output_directory=output_directory,
-            run_id=run_id,
-            warm_start=warm_start,
-            niterations=iterations,
-            binary_operators=binary_operators,
-            unary_operators=active_unary,
-            nested_constraints=nested,
-            maxsize=maxsize,
-            populations=populations,
-            population_size=population_size,
-            ncycles_per_iteration=ncycles_per_iteration,
-            weight_optimize=weight_optimize,
-            optimizer_iterations=optimizer_iterations,
-            should_optimize_constants=False,
-            complexity_of_constants=99,
-            batching=False,
-            turbo=True,
-            timeout_in_seconds=timeout_in_seconds,
-            procs=procs,
-            guesses=guesses,
-            loss_function_expression=inner_opt_loss,
-        )
+    model = PySRRegressor(
+        expression_spec=template,
+        output_directory=output_directory,
+        run_id=run_id,
+        niterations=iterations,
+        binary_operators=binary_operators,
+        unary_operators=active_unary,
+        nested_constraints=nested,
+        maxsize=maxsize,
+        populations=populations,
+        population_size=population_size,
+        ncycles_per_iteration=ncycles_per_iteration,
+        weight_optimize=weight_optimize,
+        optimizer_iterations=optimizer_iterations,
+        should_optimize_constants=False,
+        complexity_of_constants=99,
+        batching=False,
+        turbo=True,
+        timeout_in_seconds=timeout_in_seconds,
+        procs=procs,
+        guesses=guesses,
+        loss_function_expression=inner_opt_loss,
+    )
 
     if error_weighting:
         errV_safe = np.maximum(df["errV_km/s"], 0.5)
         weights = 1.0 / (2 * df["Vobs_km/s"] * errV_safe) ** 2
     else:
         weights = np.ones(len(df))
-
-    if checkpoint_every is not None:
-        # PySR only checkpoints before _run() starts and after it returns
-        # normally (sr.py fit()) — a niterations=99999 run killed by SLURM's
-        # wall-clock never reaches the "after" checkpoint, so nothing from
-        # this job's search survives to disk. Looping fit() in small chunks
-        # means every chunk completes normally, so a real, resumable
-        # checkpoint is written every `checkpoint_every` iterations instead
-        # of only (never) at the end.
-        model.set_params(niterations=checkpoint_every, warm_start=True)
-        while True:
-            model.fit(X, y, weights=weights)
-    else:
-        model.fit(X, y, weights=weights)
+    model.fit(X, y, weights=weights)
 
 
 if __name__ == "__main__":
